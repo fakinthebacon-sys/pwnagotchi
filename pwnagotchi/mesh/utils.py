@@ -34,6 +34,10 @@ class AsyncAdvertiser(object):
         return self._keypair.fingerprint
 
     def _update_advertisement(self, s):
+        # in stealth mode (advertise=false) we don't refresh/push our own
+        # advertisement - pwngrid still listens for peers, we just stay quiet.
+        if not self._config['personality'].get('advertise', True):
+            return
         self._advertisement['pwnd_run'] = len(self._handshakes)
         self._advertisement['pwnd_tot'] = utils.total_unique_handshakes(self._config['bettercap']['handshakes'])
         self._advertisement['uptime'] = pwnagotchi.uptime()
@@ -41,15 +45,33 @@ class AsyncAdvertiser(object):
         grid.set_advertisement_data(self._advertisement)
 
     def start_advertising(self):
-        if self._config['personality']['advertise']:
-            #_thread.start_new_thread(self._adv_poller, ())
-            threading.Thread(target=self._adv_poller,args=(), name="Grid", daemon=True).start()
+        # pwngrid-peer (the local daemon on :8666) sniffs the mesh and collects
+        # peers on its own, independent of whether *we* broadcast. So peer
+        # DETECTION and our own ADVERTISING are two separate switches:
+        #
+        #   personality.advertise = false  -> stealth: we stop beaconing our
+        #       own advertisement onto the mesh, but still poll pwngrid for
+        #       nearby units (so "notify me if others are around" keeps working
+        #       while we stay quiet).
+        #
+        # The peer poller therefore always runs; only the outbound beacon is
+        # gated on personality.advertise.
+        advertise = self._config['personality'].get('advertise', True)
 
+        # peer detection loop - always on, even in stealth mode
+        threading.Thread(target=self._adv_poller, args=(), name="Grid", daemon=True).start()
+
+        if advertise:
             grid.set_advertisement_data(self._advertisement)
             grid.advertise(True)
             self._view.on_state_change('face', self._on_face_change)
         else:
-            logging.warning("advertising is disabled")
+            # be explicit: tell pwngrid to stop broadcasting our advertisement.
+            logging.warning("advertising is disabled (stealth mode) - still listening for peers")
+            try:
+                grid.advertise(False)
+            except Exception as e:
+                logging.debug("could not disable grid advertising: %s" % e)
 
     def _on_face_change(self, old, new):
         self._advertisement['face'] = new

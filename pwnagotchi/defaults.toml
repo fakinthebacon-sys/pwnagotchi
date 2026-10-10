@@ -82,6 +82,20 @@ enabled = false
 enabled = true
 report = true
 
+# Alerts you when another pwnagotchi is detected nearby. Works in stealth mode
+# (personality.advertise = false) too - pwngrid keeps listening even when we
+# stop broadcasting, so you stay quiet but still get warned about other units.
+[main.plugins.peer_detector]
+enabled = false
+log = true            # write a WARNING to the pwnagotchi log on detection
+ui = true             # show a "near" counter on the display
+notify_on_lost = false
+min_rssi = -200       # ignore peers weaker than this (dBm); raise to -70 to only alert on close units
+cooldown = 30         # seconds before re-alerting on the same unit
+webhook = ""          # optional: POST alert JSON here (Discord/Slack/custom)
+ntfy_topic = ""       # optional: ntfy.sh topic for a push to your phone in the field
+ntfy_server = "https://ntfy.sh"
+
 [main.plugins.logtail]
 enabled = false
 max-lines = 10000
@@ -160,6 +174,10 @@ enabled = true
 size = "10M"
 
 [personality]
+# advertise = false enables "stealth": we stop broadcasting our own pwngrid
+# advertisement onto the mesh, but pwngrid-peer keeps listening, so peer
+# detection (and the peer_detector plugin's alerts) still work. Set to false
+# on field jobs where you don't want the unit announcing itself.
 advertise = true
 deauth = true
 associate = true
