@@ -150,18 +150,24 @@ class Agent(Client, Automata, AsyncAdvertiser):
         self.next_epoch()
         self.set_ready()
 
-    def get_current_channel(self):
+    def get_live_channel(self):
         """Return bettercap's live WiFi hop channel (updated ~every wifi.hop.period
         as it scans), or None on error. Used to reflect the actual scan channel on
-        the display during the passive recon wait, separate from set_channel()
-        which only fires later, per known-AP, during the targeted interaction
-        loop in cli.py."""
+        the display during the passive recon wait, separate from get_current_channel()
+        / set_channel() which only fire later, per known-AP, during the targeted
+        interaction loop in cli.py.
+
+        NOTE: previously also named get_current_channel(), which collided with the
+        get_current_channel() below that returns self._current_channel. The second
+        definition won, so this live-hop lookup was unreachable and the recon-wait
+        display fell back to the stale targeted-interaction channel (usually 0 ->
+        blank). Renamed so both are callable."""
         try:
             for module in self.session('session/modules'):
                 if module.get('name') == 'wifi':
                     return module.get('state', {}).get('channel')
         except Exception as e:
-            logging.debug("error while getting current wifi channel: %s", e)
+            logging.debug("error while getting live wifi channel: %s", e)
         return None
 
     def recon(self):
@@ -356,7 +362,14 @@ class Agent(Client, Automata, AsyncAdvertiser):
             try:
                 s = self.session()
             except Exception as err:
+                # if the session fetch fails, `s` is unbound; running the
+                # _update_*(s) calls below would raise NameError four times
+                # per failed poll (every 5s) during any bettercap hiccup.
+                # Skip this cycle and retry instead of spamming the log with
+                # cascading errors and showing stale display data.
                 logging.error("[agent:_fetch_stats] self.session: %s" % repr(err))
+                time.sleep(5)
+                continue
 
             try:
                 self._update_uptime(s)

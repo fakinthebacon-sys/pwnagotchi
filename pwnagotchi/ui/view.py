@@ -119,7 +119,7 @@ class View(object):
         self._state.has_element(key)
 
     def add_element(self, key, elem):
-        if self.invert is 1 and elem.color:
+        if self.invert == 1 and elem.color:
             if elem.color == 0xff:
                 elem.color = 0x00
             elif elem.color == 0x00:
@@ -295,7 +295,7 @@ class View(object):
                         self.set('face', self._get_random_face(faces.LOOK_L_HAPPY) if good_mood else self._get_random_face(faces.LOOK_L))
 
             if not sleeping:
-                channel = self._agent.get_current_channel()
+                channel = self._agent.get_live_channel()
                 if channel:
                     self.set('channel', str(channel))
 
