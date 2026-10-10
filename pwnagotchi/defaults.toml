@@ -7,8 +7,18 @@ mon_stop_cmd = "/usr/bin/monstop"
 mon_max_blind_epochs = 5
 no_restart = false
 # Channel selection strategy (core infrastructure)
-extra_channels = 15  # Number of random unscanned channels to explore per epoch
+extra_channels = 15  # Number of extra (non-active) channels to scan per epoch
 # restrict_channels = [1, 6, 11]  # Optional: limit scanning to specific channels
+# channel_strategy: "random" (default) = active channels + extra random
+#   unscanned ones. "smart" = yield-weighted: spend most of the extra_channels
+#   budget on channels that have actually produced handshakes/assocs, keeping a
+#   fraction for exploration. A fresh unit behaves like "random" until it has
+#   yield history, so it is safe to A/B in the field.
+channel_strategy = "random"
+# channel_explore_fraction = 0.3   # smart mode: share of extra_channels kept for exploration (0..1)
+# channel_weight_handshakes = 5.0  # smart mode: relative value of a past handshake on a channel
+# channel_weight_assocs = 1.0      # smart mode: relative value of a past association
+# channel_weight_deauths = 0.5     # smart mode: relative value of a past deauth
 whitelist = [
     "EXAMPLE_NETWORK",
     "ANOTHER_EXAMPLE_NETWORK",
